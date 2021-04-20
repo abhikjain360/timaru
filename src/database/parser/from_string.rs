@@ -13,7 +13,7 @@ use nom::{
     IResult,
 };
 
-use super::{Schedule, Task, TaskTime, TimeOfDay};
+use crate::database::{Schedule, Task, TaskTime, TimeOfDay};
 
 fn get_day(input: &str) -> IResult<&str, u32> {
     let (input, day) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
@@ -161,7 +161,7 @@ impl Task {
 
 impl TaskTime {
     pub fn from_str(input: &str, date: &Date<Local>) -> Result<TaskTime, ()> {
-        let s: Vec<&str> = input.split('-').collect();
+        let s: Vec<&str> = input.split('-').map(|s| s.trim()).collect();
 
         match s.len() {
             1 => {
@@ -206,6 +206,8 @@ impl From<&str> for TimeOfDay {
 }
 
 mod test {
+
+    // TODO: fix tests here by adding more and using assertions.
     #[test]
     fn test_schedule_parsing() {
         use super::Schedule;
