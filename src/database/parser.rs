@@ -13,11 +13,7 @@ use nom::{
     IResult,
 };
 
-#[derive(Debug, Clone)]
-pub struct Schedule {
-    pub date: Date<Local>,
-    pub tasks: HashMap<u8, Task>,
-}
+use super::{Schedule, Task, TaskTime, TimeOfDay};
 
 fn get_day(input: &str) -> IResult<&str, u32> {
     let (input, day) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
@@ -37,6 +33,29 @@ fn get_year(input: &str) -> IResult<&str, i32> {
 
 fn clear_ws(input: &str) -> IResult<&str, &str> {
     take_while(|c: char| is_space(c as u8) || is_newline(c as u8))(input)
+}
+
+fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, ()> {
+    let s: Vec<&str> = input.split(":").collect();
+    match s.len() {
+        1 => match s[0].parse::<u32>() {
+            Ok(hour) => Ok(date.and_hms(hour, 0, 0)),
+            _ => Err(()),
+        },
+        2 => match (s[0].parse::<u32>(), s[1].parse::<u32>()) {
+            (Ok(hour), Ok(min)) => Ok(date.and_hms(hour, min, 0)),
+            _ => Err(()),
+        },
+        3 => match (
+            s[0].parse::<u32>(),
+            s[1].parse::<u32>(),
+            s[2].parse::<u32>(),
+        ) {
+            (Ok(hour), Ok(min), Ok(sec)) => Ok(date.and_hms(hour, min, sec)),
+            _ => Err(()),
+        },
+        _ => Err(()),
+    }
 }
 
 impl Schedule {
@@ -65,14 +84,6 @@ impl Schedule {
 
         Ok((input, Self { date, tasks }))
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Task {
-    pub time: TaskTime,
-    pub description: String,
-    pub pomodoro: Option<(u8, u8)>,
-    pub finished: bool,
 }
 
 impl Task {
@@ -148,47 +159,6 @@ impl Task {
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum TaskTime {
-    Precise {
-        time: DateTime<Local>,
-    },
-    General {
-        time: TimeOfDay,
-    },
-    Period {
-        start: DateTime<Local>,
-        end: DateTime<Local>,
-    },
-    GeneralPeriod {
-        start: TimeOfDay,
-        end: TimeOfDay,
-    },
-}
-
-fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, ()> {
-    let s: Vec<&str> = input.split(":").collect();
-    match s.len() {
-        1 => match s[0].parse::<u32>() {
-            Ok(hour) => Ok(date.and_hms(hour, 0, 0)),
-            _ => Err(()),
-        },
-        2 => match (s[0].parse::<u32>(), s[1].parse::<u32>()) {
-            (Ok(hour), Ok(min)) => Ok(date.and_hms(hour, min, 0)),
-            _ => Err(()),
-        },
-        3 => match (
-            s[0].parse::<u32>(),
-            s[1].parse::<u32>(),
-            s[2].parse::<u32>(),
-        ) {
-            (Ok(hour), Ok(min), Ok(sec)) => Ok(date.and_hms(hour, min, sec)),
-            _ => Err(()),
-        },
-        _ => Err(()),
-    }
-}
-
 impl TaskTime {
     pub fn from_str(input: &str, date: &Date<Local>) -> Result<TaskTime, ()> {
         let s: Vec<&str> = input.split('-').collect();
@@ -217,17 +187,6 @@ impl TaskTime {
             _ => Err(()),
         }
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum TimeOfDay {
-    Morning,
-    Noon,
-    AfterNoon,
-    Evening,
-    Night,
-    MidNight,
-    Custom(String),
 }
 
 impl From<&str> for TimeOfDay {
