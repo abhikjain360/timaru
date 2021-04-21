@@ -5,7 +5,7 @@ mod database;
 mod error;
 
 use cli::{Opts, SubCommand};
-use database::setup::check_setup;
+use database::fs::check_setup;
 
 fn main() {
     check_setup().unwrap();

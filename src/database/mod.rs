@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use chrono::{Date, DateTime, Local};
 
 pub mod parser;
-pub mod setup;
+pub mod fs;
 
 #[derive(Debug, Clone)]
 pub struct Schedule {

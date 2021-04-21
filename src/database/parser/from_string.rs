@@ -13,7 +13,19 @@ use nom::{
     IResult,
 };
 
-use crate::database::{Schedule, Task, TaskTime, TimeOfDay};
+use crate::{
+    database::{Schedule, Task, TaskTime, TimeOfDay},
+    error::TimaruError,
+};
+
+macro_rules! change_err {
+    ($res:expr, $type:literal) => {
+        match $res {
+            Ok(t) => t,
+            Err(_) => return Err(TimaruError::Parse($type)),
+        }
+    };
+}
 
 fn get_day(input: &str) -> IResult<&str, u32> {
     let (input, day) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
@@ -35,16 +47,16 @@ fn clear_ws(input: &str) -> IResult<&str, &str> {
     take_while(|c: char| is_space(c as u8) || is_newline(c as u8))(input)
 }
 
-fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, ()> {
+fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, TimaruError> {
     let s: Vec<&str> = input.split(":").collect();
     match s.len() {
         1 => match s[0].parse::<u32>() {
             Ok(hour) => Ok(date.and_hms(hour, 0, 0)),
-            _ => Err(()),
+            _ => Err(TimaruError::Parse("time")),
         },
         2 => match (s[0].parse::<u32>(), s[1].parse::<u32>()) {
             (Ok(hour), Ok(min)) => Ok(date.and_hms(hour, min, 0)),
-            _ => Err(()),
+            _ => Err(TimaruError::Parse("time")),
         },
         3 => match (
             s[0].parse::<u32>(),
@@ -52,44 +64,48 @@ fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, ()> {
             s[2].parse::<u32>(),
         ) {
             (Ok(hour), Ok(min), Ok(sec)) => Ok(date.and_hms(hour, min, sec)),
-            _ => Err(()),
+            _ => Err(TimaruError::Parse("time")),
         },
-        _ => Err(()),
+        _ => Err(TimaruError::Parse("time")),
     }
 }
 
 impl Schedule {
-    pub fn from_str(input: &str) -> IResult<&str, Self> {
-        let (input, (_, _, _, day, month, year)) =
-            tuple((clear_ws, char('#'), space0, get_day, get_month, get_year))(input)?;
+    pub fn from_str(input: &str) -> Result<Self, TimaruError> {
+        let (input, (_, _, _, day, month, year)) = change_err!(
+            tuple((clear_ws, char('#'), space0, get_day, get_month, get_year))(input),
+            "date"
+        );
 
         let date = match Local.ymd_opt(year, month, day) {
-            LocalResult::None => {
-                return Err(nom::Err::Error(nom::error::Error {
-                    input,
-                    code: nom::error::ErrorKind::Digit,
-                }))
-            }
+            LocalResult::None => return Err(TimaruError::Parse("date")),
             LocalResult::Single(date) => date,
             LocalResult::Ambiguous(date, _) => date,
         };
 
         let mut tasks = HashMap::with_capacity(5);
 
-        let (input, _) = clear_ws(input)?;
+        let (input, _) = change_err!(clear_ws(input), "whitespace before tasks");
 
         for (idx, line) in input.lines().enumerate() {
-            tasks.insert(idx as u8, Task::from_str(line, &date)?.1);
+            tasks.insert(idx as u8, Task::from_str(line, &date)?);
         }
 
-        Ok((input, Self { date, tasks }))
+        Ok(Self { date, tasks })
     }
 }
 
 impl Task {
-    pub fn from_str<'s, 'd>(input: &'s str, date: &'d Date<Local>) -> IResult<&'s str, Self> {
-        let (mut input, _) =
-            tuple((space0, alt((char('-'), char('*'))), space0, char('[')))(input)?;
+    pub fn from_str<'s, 'd>(input: &'s str, date: &'d Date<Local>) -> Result<Self, TimaruError> {
+        let (mut input, _) = change_err!(
+            tuple::<&str, _, nom::error::Error<&str>, _>((
+                space0,
+                alt((char('-'), char('*'))),
+                space0,
+                char('[')
+            ))(input),
+            "start of task"
+        );
 
         let finished =
             if let Ok((input_left, _)) = char::<&str, nom::error::Error<&str>>('X')(input) {
@@ -99,68 +115,67 @@ impl Task {
                 input = input_left;
                 false
             } else {
-                return Err(nom::Err::Error(nom::error::Error {
-                    input,
-                    code: nom::error::ErrorKind::Space,
-                }));
+                return Err(TimaruError::Parse("finished marking of task"));
             };
 
-        let (input, (_, _, time_str, _)) = tuple((
-            char(']'),
-            space1,
-            alt((take_until("("), take_until("=>"))),
-            space0,
-        ))(input)?;
+        let (input, (_, _, time_str, _)) = change_err!(
+            tuple::<&str, _, nom::error::Error<&str>, _>((
+                char(']'),
+                space1,
+                alt((take_until("("), take_until("=>"))),
+                space0,
+            ))(input),
+            "task time"
+        );
 
-        let time = TaskTime::from_str(time_str.trim(), date).map_err(|_| {
-            nom::Err::Error(nom::error::Error {
-                input,
-                code: nom::error::ErrorKind::Space,
-            })
-        })?;
+        let time = TaskTime::from_str(time_str.trim(), date)?;
 
         let (description, pomodoro) = if input.starts_with("(") {
-            let (input, (_, _, times, _, _, _, done, _, _, _, _, _)) = tuple((
-                char('('),
-                space0,
-                digit1,
-                space0,
-                char(','),
-                space0,
-                digit1,
-                space0,
-                char(')'),
-                space0,
-                tag("=>"),
-                space0,
-            ))(input)?;
+            let (input, (_, _, times, _, _, _, done, _, _, _, _, _)) = change_err!(
+                tuple::<&str, _, nom::error::Error<&str>, _>((
+                    char('('),
+                    space0,
+                    digit1,
+                    space0,
+                    char(','),
+                    space0,
+                    digit1,
+                    space0,
+                    char(')'),
+                    space0,
+                    tag("=>"),
+                    space0,
+                ))(input),
+                "pomodoro and/or description"
+            );
             match (times.parse::<u8>(), done.parse::<u8>()) {
                 (Ok(times), Ok(done)) => (input, Some((times, done))),
-                _ => {
-                    return Err(nom::Err::Error(nom::error::Error {
-                        input,
-                        code: nom::error::ErrorKind::Space,
-                    }))
-                }
+                _ => return Err(TimaruError::Parse("pomodoro and/or description")),
             }
         } else {
-            (tuple((space0, tag("=>"), space0))(input)?.0, None)
+            (
+                change_err!(
+                    tuple::<&str, _, nom::error::Error<&str>, _>((space0, tag("=>"), space0))(
+                        input
+                    ),
+                    "description"
+                )
+                .0,
+                None,
+            )
         };
 
-        Ok((
-            "",
-            Self {
-                time,
-                pomodoro,
-                description: description.to_string(),
-                finished,
-            },
-        ))
+        Ok(Self {
+            time,
+            pomodoro,
+            description: description.to_string(),
+            finished,
+        })
     }
 }
 
 impl TaskTime {
-    pub fn from_str(input: &str, date: &Date<Local>) -> Result<TaskTime, ()> {
+    pub fn from_str(input: &str, date: &Date<Local>) -> Result<TaskTime, TimaruError> {
         let s: Vec<&str> = input.split('-').map(|s| s.trim()).collect();
 
         match s.len() {
@@ -184,7 +199,7 @@ impl TaskTime {
                     })
                 }
             }
-            _ => Err(()),
+            _ => Err(TimaruError::Parse("task time")),
         }
     }
 }
@@ -219,7 +234,7 @@ mod test {
 - [X] 5:30 (1, 1) => do some other stuff
 "#;
 
-        let (_, schedule) = Schedule::from_str(schedule_str).unwrap();
+        let schedule = Schedule::from_str(schedule_str).unwrap();
         println!("{:?}", schedule);
     }
 }

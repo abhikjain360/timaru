@@ -4,5 +4,5 @@ use std::path::PathBuf;
 pub enum TimaruError {
     Dir(PathBuf),
     EnvVar,
-    Parse(PathBuf),
+    Parse(&'static str),
 }

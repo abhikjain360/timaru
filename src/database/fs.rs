@@ -1,6 +1,8 @@
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, fs::File};
 
-use crate::error::TimaruError;
+use chrono::{Date, Datelike, Local};
+
+use crate::{database::Schedule, error::TimaruError};
 
 pub fn config_dir() -> Result<PathBuf, TimaruError> {
     let cfg_dir = if let Ok(dir) = env::var("XDG_CONFIG_HOME") {
@@ -30,4 +32,8 @@ pub fn check_setup() -> Result<(PathBuf, PathBuf), TimaruError> {
     let db_dir = check_dir(cfg_dir.join("db"))?;
 
     Ok((cfg_dir, db_dir))
+}
+
+pub fn open(db_dir: PathBuf, date: &Date<Local>) -> Result<Schedule, TimaruError> {
+    todo!()
 }
