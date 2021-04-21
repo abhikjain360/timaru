@@ -9,10 +9,16 @@ pub struct Opts {
 
 #[derive(Clap)]
 pub enum SubCommand {
-    Weekly,
-    Month,
+    /// Print today's schedule
     Today,
-    Update,
+    /// Print next 7 days' schedule
+    Weekly,
+    /// Print schedule from today to next month same day
+    Month,
+    /// Add a new task
     Add,
+    /// Remove a task
     Remove,
+    /// Update a task
+    Update,
 }

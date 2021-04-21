@@ -27,6 +27,7 @@ impl Schedule {
         let mut schedule_file = BufReader::new(
             match OpenOptions::new()
                 .create(true)
+                .write(true)
                 .read(true)
                 .open(&schedule_path)
             {
@@ -38,32 +39,41 @@ impl Schedule {
         let mut schedule_content = String::new();
         schedule_file
             .read_to_string(&mut schedule_content)
-            .map_err(|_| TimaruError::File(schedule_path))?;
+            .map_err(|e| {
+                println!("{:?}", e);
+                TimaruError::File(schedule_path.clone())
+            })?;
 
-        Schedule::from_str(&schedule_content)
+        let schedule_content = schedule_content.trim();
+
+        if schedule_content.is_empty() {
+            Ok(Schedule {
+                file: schedule_path,
+                tasks: Default::default(),
+                date: *date,
+            })
+        } else {
+            Schedule::from_str(schedule_path, &schedule_content)
+        }
     }
 
-    pub fn close(self, db_dir: &PathBuf) -> Result<(), TimaruError> {
-        let schedule_path = check_dir(
-            check_dir(db_dir.join(&format!("{}", self.date.year())))?
-                .join(&format!("{}", self.date.month())),
-        )?
-        .join(&format!("{}", self.date.day()));
-
+    pub fn flush(&self) -> Result<(), TimaruError> {
         let mut schedule_file = BufWriter::new(
-            match OpenOptions::new()
-                .create(true)
-                .write(true)
-                .open(&schedule_path)
-            {
+            match OpenOptions::new().create(true).write(true).open(&self.file) {
                 Ok(file) => file,
-                Err(_) => return Err(TimaruError::File(schedule_path)),
+                Err(_) => return Err(TimaruError::File(self.file.clone())),
             },
         );
 
         match schedule_file.write(self.as_string().as_bytes()) {
             Ok(_) => Ok(()),
-            Err(_) => Err(TimaruError::File(schedule_path)),
+            Err(_) => Err(TimaruError::File(self.file.clone())),
         }
+    }
+}
+
+impl Drop for Schedule {
+    fn drop(&mut self) {
+        self.flush().unwrap();
     }
 }

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use chrono::{Date, DateTime, Local};
 
@@ -10,6 +10,7 @@ pub mod database;
 pub struct Schedule {
     pub date: Date<Local>,
     pub tasks: HashMap<u8, Task>,
+    pub file: PathBuf,
 }
 
 #[derive(Debug, Clone)]

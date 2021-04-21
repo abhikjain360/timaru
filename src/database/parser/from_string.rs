@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use chrono::{Date, DateTime, Local, LocalResult, TimeZone};
 use nom::{
@@ -68,14 +68,14 @@ fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, Timaru
 }
 
 impl Schedule {
-    pub fn from_str(input: &str) -> Result<Self, TimaruError> {
+    pub fn from_str(file: PathBuf, input: &str) -> Result<Self, TimaruError> {
         let (input, (_, _, _, day, month, year)) = change_err!(
             tuple((clear_ws, char('#'), space0, get_day, get_month, get_year))(input),
-            "date"
+            "date format wrong"
         );
 
         let date = match Local.ymd_opt(year, month, day) {
-            LocalResult::None => return Err(TimaruError::Parse("date")),
+            LocalResult::None => return Err(TimaruError::Parse("date can not exist")),
             LocalResult::Single(date) => date,
             LocalResult::Ambiguous(date, _) => date,
         };
@@ -88,7 +88,7 @@ impl Schedule {
             tasks.insert(idx as u8, Task::from_str(line, &date)?);
         }
 
-        Ok(Self { date, tasks })
+        Ok(Self { file, date, tasks })
     }
 }
 
@@ -223,6 +223,7 @@ mod test {
     #[test]
     fn test_schedule_parsing() {
         use super::Schedule;
+        use std::path::PathBuf;
 
         let schedule_str = r#"
 # 12-12-2012
@@ -231,7 +232,7 @@ mod test {
 - [X] 5:30 (1, 1) => do some other stuff
 "#;
 
-        let schedule = Schedule::from_str(schedule_str).unwrap();
+        let schedule = Schedule::from_str(PathBuf::from(""), schedule_str).unwrap();
         println!("{:?}", schedule);
     }
 }
