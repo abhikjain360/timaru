@@ -2,7 +2,7 @@
 
 use chrono::{DateTime, Datelike, Timelike};
 
-use crate::database::{Schedule, Task, TaskTime, TimeOfDay};
+use crate::{Schedule, Task, TaskTime, TimeOfDay};
 
 impl Schedule {
     pub fn as_string(&self) -> String {

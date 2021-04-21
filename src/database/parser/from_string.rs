@@ -13,10 +13,7 @@ use nom::{
     IResult,
 };
 
-use crate::{
-    database::{Schedule, Task, TaskTime, TimeOfDay},
-    error::TimaruError,
-};
+use crate::{error::TimaruError, Schedule, Task, TaskTime, TimeOfDay};
 
 macro_rules! change_err {
     ($res:expr, $type:literal) => {
