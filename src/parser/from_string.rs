@@ -50,7 +50,7 @@ fn clear_ws(input: &str) -> IResult<&str, &str> {
 }
 
 fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, TimaruError> {
-    let s: Vec<&str> = input.split(":").collect();
+    let s: Vec<&str> = input.split(':').collect();
     match s.len() {
         1 => match s[0].parse::<u32>() {
             Ok(hour) => Ok(date.and_hms(hour, 0, 0)),
@@ -93,12 +93,12 @@ impl Schedule {
             tasks.insert((idx as u8) + 1, Task::from_str(line, &date)?);
         }
 
-        Ok(Self { file, date, tasks })
+        Ok(Self { date, tasks, file })
     }
 }
 
 impl Task {
-    pub fn from_str<'s, 'd>(input: &'s str, date: &'d Date<Local>) -> Result<Self, TimaruError> {
+    pub fn from_str(input: &'_ str, date: &Date<Local>) -> Result<Self, TimaruError> {
         let (mut input, _) = change_err!(
             tuple::<&str, _, nom::error::Error<&str>, _>((
                 space0,
@@ -132,7 +132,7 @@ impl Task {
 
         let time = TaskTime::from_str(time_str.trim(), date)?;
 
-        let (description, pomodoro) = if input.starts_with("(") {
+        let (description, pomodoro) = if input.starts_with('(') {
             let (input, (_, _, times, _, _, _, done, _, _, _, _, _)) = change_err!(
                 tuple::<&str, _, nom::error::Error<&str>, _>((
                     char('('),

@@ -16,47 +16,63 @@ pub enum SubCommand {
     /// Print schedule from today to next month same day
     Month,
     /// Add a new task
-    Add(Add),
+    Add {
+        /// The date at which to add a task
+        #[clap(long, short)]
+        date: Option<String>,
+        /// The time at which to add a task
+        #[clap(long, short)]
+        time: Option<String>,
+        /// Whether to enable pomodoro for this task or not
+        #[clap(long, short)]
+        pomodoro: Option<u8>,
+        /// The task description
+        description: String,
+    },
     /// Remove a task
-    Remove(Remove),
+    Remove {
+        /// The date at which to remove a task
+        date: String,
+        /// The index of task to be removed
+        idx: u8,
+    },
     /// Update a task
-    Update(Update),
+    Update {
+        /// The date at which to update a task
+        old_date: String,
+        /// The idx of the task to update
+        idx: u8,
+        /// The subcommand to update
+        #[clap(subcommand)]
+        subcmd: UpdateSubCmd,
+    },
+    /// View a particular day's schedule
+    List { date: String },
 }
 
 #[derive(Clap, Debug, Clone)]
-pub struct Add {
-    /// The date at which to add a task
-    #[clap(long, short)]
-    pub date: Option<String>,
+pub enum UpdateSubCmd {
+    Date {
+        date: String,
+    },
     /// The time at which to add a task
-    #[clap(long, short)]
-    pub time: Option<String>,
+    Time {
+        time: String,
+    },
     /// Whether to enable pomodoro for this task or not
-    #[clap(long, short)]
-    pub pomodoro: Option<u8>,
+    Pomodoro(PomodoroUpdate),
     /// The task description
-    pub description: String,
+    Description {
+        desc: String,
+    },
 }
 
 #[derive(Clap, Debug, Clone)]
-pub struct Update {
-    /// The date at which to add a task
-    #[clap(long, short)]
-    pub date: Option<String>,
-    /// The time at which to add a task
-    #[clap(long, short)]
-    pub time: Option<String>,
-    /// Whether to enable pomodoro for this task or not
-    #[clap(long, short)]
-    pub pomodoro: Option<u8>,
-    /// The task description
-    pub description: String,
+pub enum PomodoroUpdate {
+    New { total: u8 },
+    Remove,
+    Done { done: u8 },
 }
 
 #[derive(Clap, Debug, Clone)]
-pub struct Remove {
-    /// The date at which to remove a task
-    pub date: String,
-    /// The index of task to be removed
-    pub idx: u8,
-}
+pub struct Remove {}

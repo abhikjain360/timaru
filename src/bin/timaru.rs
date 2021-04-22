@@ -1,10 +1,11 @@
 use chrono::{Datelike, Duration, Local, TimeZone};
 
 use timaru::{
-    cli::{Opts, Remove, SubCommand},
+    cli::{Opts, SubCommand},
     parser::get_ymd,
     schedule::Schedule,
     setup::check_setup,
+    task::{Task, TaskTime},
 };
 
 use clap::Clap;
@@ -34,10 +35,37 @@ fn main() {
                 day = day + Duration::days(1);
             }
         }
-        SubCommand::Add(add) => {
-            Schedule::from_add(add, &db_dir).unwrap();
+        SubCommand::List { date: _ } => {
+            println!("list");
         }
-        SubCommand::Remove(Remove { date, idx }) => {
+        SubCommand::Add {
+            date,
+            time,
+            pomodoro,
+            description,
+        } => {
+            let date = match date {
+                Some(date_string) => {
+                    let (_, (d, m, y)) = get_ymd(&date_string).unwrap();
+                    Local.ymd(y, m, d)
+                }
+                None => Local::today(),
+            };
+
+            let task = Task {
+                time: match time {
+                    Some(time) => TaskTime::from_str(&time, &date).unwrap(),
+                    None => TaskTime::Precise { time: Local::now() },
+                },
+                description,
+                pomodoro: pomodoro.map(|total| (total, 0)),
+                finished: false,
+            };
+
+            let mut schedule = Schedule::open(&db_dir, &date).unwrap();
+            schedule.add_task(task);
+        }
+        SubCommand::Remove { date, idx } => {
             let date = {
                 let (_, (d, m, y)) = get_ymd(&date).unwrap();
                 Local.ymd(y, m, d)
@@ -47,8 +75,11 @@ fn main() {
             schedule.remove_task(idx).unwrap();
             // println!("{}\n{:?}", schedule.as_string(), schedule);
         }
-        SubCommand::Update(_update) => {
-            println!("update");
-        }
+        #[allow(unused_variables)]
+        SubCommand::Update {
+            old_date,
+            idx,
+            subcmd,
+        } => {}
     }
 }

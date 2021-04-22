@@ -3,19 +3,12 @@ use std::{
     fmt::{self, Debug, Formatter},
     fs::OpenOptions,
     io::{prelude::*, BufReader, BufWriter},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
-use chrono::{Date, Datelike, Local, TimeZone};
+use chrono::{Date, Datelike, Local};
 
-use crate::{
-    change_err,
-    cli::Add,
-    error::TimaruError,
-    parser::get_ymd,
-    setup::check_dir,
-    task::{Task, TaskTime},
-};
+use crate::{error::TimaruError, setup::check_dir, task::Task};
 
 #[derive(Clone)]
 pub struct Schedule {
@@ -42,7 +35,7 @@ impl Debug for Schedule {
 }
 
 impl Schedule {
-    pub fn open(db_dir: &PathBuf, date: &Date<Local>) -> Result<Schedule, TimaruError> {
+    pub fn open(db_dir: &Path, date: &Date<Local>) -> Result<Schedule, TimaruError> {
         let schedule_path = check_dir(
             check_dir(db_dir.join(&format!("{}", date.year())))?.join(&format!("{}", date.month())),
         )?
@@ -95,39 +88,6 @@ impl Schedule {
             Ok(_) => Ok(()),
             Err(_) => Err(TimaruError::File(self.file.clone())),
         }
-    }
-
-    pub fn from_add(
-        Add {
-            date,
-            time,
-            pomodoro,
-            description,
-        }: Add,
-        db_dir: &PathBuf,
-    ) -> Result<Self, TimaruError> {
-        let date = match date {
-            Some(date_string) => {
-                let (_, (d, m, y)) = change_err!(get_ymd(&date_string), "date");
-                Local.ymd(y, m, d)
-            }
-            None => Local::today(),
-        };
-
-        let task = Task {
-            time: match time {
-                Some(time) => TaskTime::from_str(&time, &date)?,
-                None => TaskTime::Precise { time: Local::now() },
-            },
-            description,
-            pomodoro: pomodoro.map(|total| (total, 0)),
-            finished: false,
-        };
-
-        let mut schedule = Schedule::open(db_dir, &date)?;
-        schedule.add_task(task);
-
-        Ok(schedule)
     }
 
     pub fn add_task(&mut self, task: Task) {
