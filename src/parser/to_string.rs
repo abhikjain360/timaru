@@ -1,8 +1,9 @@
-#![allow(unused_imports, unused_variables)]
+use chrono::{Datelike, Timelike};
 
-use chrono::{DateTime, Datelike, Timelike};
-
-use crate::{Schedule, Task, TaskTime, TimeOfDay};
+use crate::{
+    schedule::Schedule,
+    task::{Task, TaskTime, TimeOfDay},
+};
 
 impl Schedule {
     pub fn as_string(&self) -> String {

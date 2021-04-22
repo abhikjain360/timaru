@@ -13,16 +13,12 @@ use nom::{
     IResult,
 };
 
-use crate::{error::TimaruError, Schedule, Task, TaskTime, TimeOfDay};
-
-macro_rules! change_err {
-    ($res:expr, $type:literal) => {
-        match $res {
-            Ok(t) => t,
-            Err(_) => return Err(TimaruError::Parse($type)),
-        }
-    };
-}
+use crate::{
+    change_err,
+    error::TimaruError,
+    schedule::Schedule,
+    task::{Task, TaskTime, TimeOfDay},
+};
 
 fn get_day(input: &str) -> IResult<&str, u32> {
     let (input, day) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
@@ -38,6 +34,15 @@ fn get_month(input: &str) -> IResult<&str, u32> {
 
 fn get_year(input: &str) -> IResult<&str, i32> {
     map_res(digit1, |s: &str| s.parse::<i32>())(input)
+}
+
+pub fn get_ymd(input: &str) -> IResult<&str, (u32, u32, i32)> {
+    tuple((space0, get_day, get_month, get_year))(input)
+        .map(|t| (t.0, (t.1 .1, t.1 .2, t.1 .3)))
+        .map_err(|e| {
+            println!("{:?}", e);
+            e
+        })
 }
 
 fn clear_ws(input: &str) -> IResult<&str, &str> {
@@ -85,7 +90,7 @@ impl Schedule {
         let (input, _) = change_err!(clear_ws(input), "whitespace before tasks");
 
         for (idx, line) in input.lines().enumerate() {
-            tasks.insert(idx as u8, Task::from_str(line, &date)?);
+            tasks.insert((idx as u8) + 1, Task::from_str(line, &date)?);
         }
 
         Ok(Self { file, date, tasks })
