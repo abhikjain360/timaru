@@ -1,7 +1,7 @@
 use clap::Clap;
 
 #[derive(Clap, Debug, Clone)]
-#[clap(version = "0.1", author = "Abhik Jain <abhikjain360@gmail.com>")]
+#[clap(version = "0.1")]
 pub struct Opts {
     #[clap(subcommand)]
     pub subcmd: SubCommand,
@@ -63,6 +63,10 @@ pub enum UpdateSubCmd {
     Description {
         desc: String,
     },
+    /// Mark task as completed
+    Done,
+    /// Mark task as incomplete
+    NotDone
 }
 
 #[derive(Clap, Debug, Clone)]
@@ -71,6 +75,3 @@ pub enum PomodoroUpdate {
     Remove,
     Done { done: u8 },
 }
-
-#[derive(Clap, Debug, Clone)]
-pub struct Remove {}

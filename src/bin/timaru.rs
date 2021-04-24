@@ -125,6 +125,12 @@ fn main() {
                         old_task_schedule.tasks.get_mut(&idx).unwrap().pomodoro = None;
                     }
                 },
+                UpdateSubCmd::Done => {
+                    old_task_schedule.tasks.get_mut(&idx).unwrap().finished = true;
+                }
+                UpdateSubCmd::NotDone => {
+                    old_task_schedule.tasks.get_mut(&idx).unwrap().finished = false;
+                }
             }
         }
     }
