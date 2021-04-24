@@ -28,6 +28,8 @@ Not certainly planned, but maybe one day they might be:
 
 Each day has a **schedule**, which is divided into **tasks**, and each task has following properties:
 
+| Field         | Decription                                                                        |
+| ------------- | --------------------------------------------------------------------------------- |
 | `finished`    | a bool, telling whether the task is done or not.                                  |
 | `time`        | time associated with the task. See `TaskTime` for valid inputs.                   |
 | `description` | description of the task in form of string.                                        |
@@ -37,6 +39,8 @@ Each day has a **schedule**, which is divided into **tasks**, and each task has 
 
 All instances of time used are `TaskTime` type. There are 4 valid types of `TaskTime`:
 
+| Type           | Decription                                                                         |
+| -------------- | ---------------------------------------------------------------------------------- |
 | precise type   | `12:30`, `16:30:30`                                                                |
 | general type   | one of `morning`, `noon`, `afternoon`, `evening`, `midnight`, or a `custom` string |
 | precise period | 2 precise types, separated with a hyphen, no spaces. `12:30-16:30`.                |
@@ -62,6 +66,8 @@ The entire config lives in one of the following, chosen in the order mentioned:
 
 ## CLI Commands
 
+| Command                                             | Description                                                                                               |
+| --------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | `timaru list [date]`                                | Shows the schedule of the given date. If not specified then shows current day's schedule                  |
 | `timaru week`                                       | Shows the schedules of next 7 days.                                                                       |
 | `timaru month`                                      | Shows the schedules of all dates till same day next month.                                                |
@@ -73,9 +79,11 @@ The entire config lives in one of the following, chosen in the order mentioned:
 
 `timaru update` has following subcommands:
 
-| `date <date>`                                   | change the date of the task.                        |
-| `time <time>`                                   | change the time of the task, keeping the date same. |
-| `description <desc>`                            | change the description of the task.                 |
-| `done`                                          | mark task as done.                                  |
-| `notdone`                                       | mark task as not done.                              |
-| `pomodoro [new <total> | remove | done <done>]` | change pomodoro of the task                         |
+| Command                | Description                                         |
+| ---------------------- | --------------------------------------------------- |
+| `date <date>`          | change the date of the task.                        |
+| `time <time>`          | change the time of the task, keeping the date same. |
+| `description <desc>`   | change the description of the task.                 |
+| `done`                 | mark task as done.                                  |
+| `notdone`              | mark task as not done.                              |
+| `pomodoro [new <total> | remove                                              | done <done>]` | change pomodoro of the task |
