@@ -79,14 +79,14 @@ The entire config lives in one of the following, chosen in the order mentioned:
 
 `timaru update` has following subcommands:
 
-| Command                                          | Description                                          |
-| ------------------------------------------------ | ---------------------------------------------------- |
-| `date <date>`                                    | change the date of the task.                         |
-| `time <time>`                                    | change the time of the task, keeping the date same.  |
-| `description <desc>`                             | change the description of the task.                  |
-| `done`                                           | mark task as done.                                   |
-| `notdone`                                        | mark task as not done.                               |
-| `pomodoro [new <total> | remove | done <done>]`  | change pomodoro of the task                          |
+| Command                                                               | Description                                          |
+| --------------------------------------------------------------------- | ---------------------------------------------------- |
+| `date <date>`                                                         | change the date of the task.                         |
+| `time <time>`                                                         | change the time of the task, keeping the date same.  |
+| `description <desc>`                                                  | change the description of the task.                  |
+| `done`                                                                | mark task as done.                                   |
+| `notdone`                                                             | mark task as not done.                               |
+| <code>pomodoro [new <total> &#124; remove &#124; done <done>]</code>  | change pomodoro of the task                          |
 
 ## License
 
