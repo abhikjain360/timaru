@@ -87,3 +87,11 @@ The entire config lives in one of the following, chosen in the order mentioned:
 | `done`                                           | mark task as done.                                   |
 | `notdone`                                        | mark task as not done.                               |
 | `pomodoro [new <total> | remove | done <done>]`  | change pomodoro of the task                          |
+
+### License
+
+Dual licensed under Apache License Version 2.0 and MIT License.
+
+### Contributing
+
+Follows [Rust Code of Conduct]( https://www.rust-lang.org/policies/code-of-conduct ) wherever applicable.
