@@ -40,7 +40,13 @@ impl Task {
 impl TaskTime {
     pub fn as_string(&self) -> String {
         match self {
-            TaskTime::Precise { time } => format!("{}:{}", time.hour(), time.minute()),
+            TaskTime::Precise { time } => {
+                if time.minute() < 10 {
+                    format!("{}:0{}", time.hour(), time.minute())
+                } else {
+                    format!("{}:{}", time.hour(), time.minute())
+                }
+            }
             TaskTime::General { time } => time.as_str().to_string(),
             TaskTime::Period { start, end } => format!(
                 "{}:{} - {}:{}",

@@ -1,4 +1,4 @@
-use chrono::{DateTime, Local};
+use chrono::{Date, DateTime, Local, Timelike};
 
 #[derive(Debug, Clone)]
 pub struct Task {
@@ -35,4 +35,19 @@ pub enum TimeOfDay {
     Night,
     MidNight,
     Custom(String),
+}
+
+impl TaskTime {
+    pub fn change_date(&mut self, date: &Date<Local>) {
+        match self {
+            TaskTime::Period { start, end } => {
+                *start = date.and_hms(start.hour(), start.minute(), start.second());
+                *end = date.and_hms(end.hour(), end.minute(), end.second());
+            }
+            TaskTime::Precise { time } => {
+                *time = date.and_hms(time.hour(), time.minute(), time.second());
+            }
+            _ => {}
+        }
+    }
 }

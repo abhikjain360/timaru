@@ -9,8 +9,6 @@ pub struct Opts {
 
 #[derive(Clap, Debug, Clone)]
 pub enum SubCommand {
-    /// Print today's schedule
-    Today,
     /// Print next 7 days' schedule
     Weekly,
     /// Print schedule from today to next month same day
@@ -46,8 +44,8 @@ pub enum SubCommand {
         #[clap(subcommand)]
         subcmd: UpdateSubCmd,
     },
-    /// View a particular day's schedule
-    List { date: String },
+    /// View a particular day's schedule. If no argument is provided shows current day's schedule.
+    List { date: Option<String> },
 }
 
 #[derive(Clap, Debug, Clone)]

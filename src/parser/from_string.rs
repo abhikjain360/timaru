@@ -49,7 +49,7 @@ fn clear_ws(input: &str) -> IResult<&str, &str> {
     take_while(|c: char| is_space(c as u8) || is_newline(c as u8))(input)
 }
 
-fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, TimaruError> {
+pub fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, TimaruError> {
     let s: Vec<&str> = input.split(':').collect();
     match s.len() {
         1 => match s[0].parse::<u32>() {
