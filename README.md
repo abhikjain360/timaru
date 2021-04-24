@@ -9,7 +9,7 @@ Work in progress and not well tested. Currently only CLI interface is working wh
 Almost certainly planned:
 - a TUI with all sorts of functionalities
 - async execution wherever possible
-- sending notifications using something like [`libnotify`]( https://gitlab.gnome.org/GNOME/libnotify )
+- sending notifications using something like [`libnotify`]( https://gitlab.gnome.org/GNOME/libnotify ), will also need a background process for this
 
 Might implement, but only after above things are done:
 - a config file with following options:
@@ -17,10 +17,22 @@ Might implement, but only after above things are done:
 	- specify date and time formats
 	- custom keybindings
 	- custom shortcuts for CLI
+- Encryption of data
+- Option to use less storage by storing in binary format or using a database
+- Exporting to other formats like `ics`, `csv` etc.
+- A logo for the app
 
-Not certainly planned, but maybe one day they might be:
+Not planned for sure, but a programmer can dream:
 - Windows support
 - a GUI
+- A web app/client
+- Ability to host app on a server
+- Multi-user support
+- A mobile app when Rust takes over Kotlin as the goto language for Android Development
+
+## Goals
+- A timetable management app that I like with features that I want, but is still configurable enough to allow others to use as well.
+- Vim-like keybindings wherever possible.
 
 ## The Concept
 
@@ -63,7 +75,6 @@ The entire config lives in one of the following, chosen in the order mentioned:
 - `$HOME/.config/timaru` if defined
 - else throws an error.
 
-
 ## CLI Commands
 
 | Command                                             | Description                                                                                                                  |
@@ -87,6 +98,8 @@ The entire config lives in one of the following, chosen in the order mentioned:
 | `done`                                                                | mark task as done.                                   |
 | `notdone`                                                             | mark task as not done.                               |
 | <code>pomodoro [new <total> &#124; remove &#124; done <done>]</code>  | change pomodoro of the task                          |
+
+## Goals
 
 ## License
 
