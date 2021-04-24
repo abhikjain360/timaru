@@ -16,7 +16,7 @@ fn main() {
     let opts = Opts::parse();
 
     match opts.subcmd {
-        SubCommand::Weekly => {
+        SubCommand::Week => {
             let mut day = Local::today();
             for _ in 0..7 {
                 println!("{:?}", Schedule::open(&db_dir, &day).unwrap());

@@ -10,7 +10,7 @@ pub struct Opts {
 #[derive(Clap, Debug, Clone)]
 pub enum SubCommand {
     /// Print next 7 days' schedule
-    Weekly,
+    Week,
     /// Print schedule from today to next month same day
     Month,
     /// Add a new task
