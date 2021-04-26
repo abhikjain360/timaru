@@ -1,4 +1,6 @@
-use chrono::{Date, DateTime, Local, Timelike};
+use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
+
+use chrono::{Date, DateTime, Local, Timelike, NaiveTime};
 
 #[derive(Debug, Clone)]
 pub struct Task {
@@ -8,7 +10,7 @@ pub struct Task {
     pub finished: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TaskTime {
     Precise {
         time: DateTime<Local>,
@@ -26,7 +28,7 @@ pub enum TaskTime {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TimeOfDay {
     Morning,
     Noon,
@@ -48,6 +50,27 @@ impl TaskTime {
                 *time = date.and_hms(time.hour(), time.minute(), time.second());
             }
             _ => {}
+        }
+    }
+}
+
+impl PartialOrd for TaskTime {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        None
+    }
+}
+
+impl Ord for TaskTime {
+    fn cmp(&self, other: &Self) -> Ordering {
+
+    }
+}
+
+impl TimeOfDay {
+    pub fn to_time(&self) -> Option<NaiveTime> {
+        match self {
+            &TimeOfDay::Noon => Some(NaiveTime::from_hms(12, 0, 0)),
+            _ => None
         }
     }
 }
