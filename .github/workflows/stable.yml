@@ -1,0 +1,11 @@
+name: xtasks-ci
+
+on: [push, pull_request]
+
+jobs:
+  xtask:
+    runs-on: ubuntu-latest
+    steps:
+      - name: rust-cargo
+        uses: actions-rs/cargo@v1.0.1
+        run: cargo xtask ci

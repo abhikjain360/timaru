@@ -14,7 +14,6 @@ fn main() {
 
     match flags.subcommand {
         XtaskCmd::Ci(_) => {
-            // TODO: write CI tests here
             ci().unwrap();
         }
         XtaskCmd::Help(_) => {
