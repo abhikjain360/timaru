@@ -10,8 +10,13 @@ use timaru::{
 
 use clap::Clap;
 
-fn main() {
-    let (_cfg_dir, db_dir) = check_setup().unwrap();
+fn run() -> Result<(), String> {
+    let (_cfg_dir, db_dir) = match check_setup() {
+        Ok(path_tuple) => path_tuple,
+        Err(err) => {
+            return Err(format!("error: could not read configuration directory {:?}", err))
+        }
+    };
 
     let opts = Opts::parse();
 
@@ -19,7 +24,10 @@ fn main() {
         SubCommand::Week => {
             let mut day = Local::today();
             for _ in 0..7 {
-                println!("{:?}", Schedule::open(&db_dir, &day).unwrap());
+                match Schedule::open(&db_dir, &day) {
+                    Ok(schedule ) => println!("{:?}", schedule),
+                    Err(err) => return Err(format!("error: could not open schedule {:?}", err))
+                }
                 day = day + Duration::days(1);
             }
         }
@@ -28,19 +36,28 @@ fn main() {
             let next_month = if day.month() < 12 { day.month() + 1 } else { 1 };
             let next_month_day = Local.ymd(day.year(), next_month, day.day());
             while day <= next_month_day {
-                println!("{:?}", Schedule::open(&db_dir, &day).unwrap());
+                match Schedule::open(&db_dir, &day) {
+                    Ok(schedule ) => println!("{:?}", schedule),
+                    Err(err) => return Err(format!("error: could not open schedule {:?}", err))
+                }
                 day = day + Duration::days(1);
             }
         }
         SubCommand::List { date } => {
             let date = match date {
                 Some(date_string) => {
-                    let (_, (d, m, y)) = get_ymd(&date_string).unwrap();
+                    let (d, m, y) = match get_ymd(&date_string) {
+                        Ok((_, date)) => date,
+                        Err(err) => return Err(format!("error: could not open schedule {}", err)),
+                    };
                     Local.ymd(y, m, d)
                 }
                 None => Local::today(),
             };
-            println!("{:?}", Schedule::open(&db_dir, &date).unwrap());
+            match Schedule::open(&db_dir, &date) {
+                Ok(schedule ) => println!("{:?}", schedule),
+                Err(err) => return Err(format!("error: could not open schedule {:?}", err)),
+            }
         }
         SubCommand::Add {
             date,
@@ -50,7 +67,10 @@ fn main() {
         } => {
             let date = match date {
                 Some(date_string) => {
-                    let (_, (d, m, y)) = get_ymd(&date_string).unwrap();
+                    let (d, m, y) = match get_ymd(&date_string) {
+                        Ok((_, date)) => date,
+                        Err(err) => return Err(format!("error: invalid date {}", err)),
+                    };
                     Local.ymd(y, m, d)
                 }
                 None => Local::today(),
@@ -58,26 +78,39 @@ fn main() {
 
             let task = Task {
                 time: match time {
-                    Some(time) => TaskTime::from_str(&time, &date).unwrap(),
+                    Some(time) => match TaskTime::from_str(&time, &date) {
+                        Ok(time) => time,
+                        Err(err) => return Err(format!("error: invalid time {:?}", err)),
+                    }
                     None => TaskTime::Precise { time: Local::now() },
                 },
                 description,
                 pomodoro: pomodoro.map(|total| (total, 0)),
                 finished: false,
             };
-
-            let mut schedule = Schedule::open(&db_dir, &date).unwrap();
-            schedule.add_task(task);
+            match Schedule::open(&db_dir, &date) {
+                Ok(ref mut schedule ) => schedule.add_task(task),
+                Err(err) => return Err(format!("error: could not open schedule {:?}", err)),
+            }
         }
         SubCommand::Remove { date, idx } => {
             let date = {
-                let (_, (d, m, y)) = get_ymd(&date).unwrap();
+                let (d, m, y) = match get_ymd(&date) {
+                    Ok((_, date)) => date,
+                    Err(err) => return Err(format!("error: invalid date {}", err)),
+                };
                 Local.ymd(y, m, d)
             };
 
-            let mut schedule = Schedule::open(&db_dir, &date).unwrap();
-            schedule.remove_task(idx).unwrap();
-            // println!("{}\n{:?}", schedule.as_string(), schedule);
+            match Schedule::open(&db_dir, &date) {
+                Ok(ref mut schedule ) => {
+                    if let None = schedule.remove_task(idx) {
+                        return Err(format!("error: invalid index"))
+                    }
+                    // println!("{}\n{:?}", schedule.as_string(), schedule);
+                }
+                Err(err) => return Err(format!("error: could not open schedule {:?}", err)),
+            }
         }
         #[allow(unused_variables)]
         SubCommand::Update {
@@ -86,52 +119,100 @@ fn main() {
             subcmd,
         } => {
             let old_date = {
-                let (_, (d, m, y)) = get_ymd(&old_date).unwrap();
+                let (d, m, y) = match get_ymd(&old_date) {
+                    Ok((_, date)) => date,
+                    Err(err) => return Err(format!("error: invalid date {}", err)),
+                };
                 Local.ymd(y, m, d)
             };
-            let mut old_task_schedule = Schedule::open(&db_dir, &old_date).unwrap();
+
+            let mut old_task_schedule = match Schedule::open(&db_dir, &old_date) {
+                Ok(schedule) => schedule,
+                Err(err) => return Err(format!("error: could not open schedule {:?}", err)),
+            };
 
             match subcmd {
                 UpdateSubCmd::Date { date } => {
                     let date = {
-                        let (_, (d, m, y)) = get_ymd(&date).unwrap();
+                        let (d, m, y) = match get_ymd(&date) {
+                            Ok((_, date)) => date,
+                            Err(err) => return Err(format!("error: invalid date {}", err)),
+                        };
                         Local.ymd(y, m, d)
                     };
-                    let mut task = old_task_schedule.remove_task(idx).unwrap();
-                    task.time.change_date(&date);
-                    let mut new_schedule = Schedule::open(&db_dir, &date).unwrap();
-                    new_schedule.add_task(task);
+                    if let Some(mut task) = old_task_schedule.remove_task(idx) {
+                        task.time.change_date(&date);
+                        match Schedule::open(&db_dir, &date) {
+                            Ok(mut new_schedule ) => new_schedule.add_task(task),
+                            Err(err) => return Err(format!("error: could not open schedule {:?}", err)),
+                        }
+                    } else {
+                        return Err(format!("error: invalid index"))
+                    }
                 }
                 UpdateSubCmd::Time { time } => {
-                    old_task_schedule.tasks.get_mut(&idx).unwrap().time =
-                        TaskTime::from_str(&time, &old_task_schedule.date).unwrap();
+                    if let Some(task) = old_task_schedule.tasks.get_mut(&idx) {
+                        if let Err(err) = TaskTime::from_str(&time, &old_task_schedule.date) {
+                            return Err(format!("error: invalid time {:?}", err))
+                        }
+                    } else {
+                        return Err(format!("error: invalid index"))
+                    }                        
                 }
                 UpdateSubCmd::Description { desc } => {
-                    old_task_schedule.tasks.get_mut(&idx).unwrap().description = desc;
+                    if let Some(task) = old_task_schedule.tasks.get_mut(&idx) {
+                        task.description = desc;
+                    } else {
+                        return Err(format!("error: invalid index"))
+                    }
                 }
                 UpdateSubCmd::Pomodoro(pom_update) => match pom_update {
                     PomodoroUpdate::New { total } => {
-                        let task = old_task_schedule.tasks.get_mut(&idx).unwrap();
-                        task.pomodoro = match &task.pomodoro {
-                            Some((_, done)) => Some((total, *done)),
-                            None => Some((total, 0)),
-                        };
+                        if let Some(task) = old_task_schedule.tasks.get_mut(&idx) {
+                            task.pomodoro = match &task.pomodoro {
+                                Some((_, done)) => Some((total, *done)),
+                                None => Some((total, 0)),
+                            };
+                        } else {
+                            return Err(format!("error: invalid index"))
+                        }
                     }
                     PomodoroUpdate::Done { done } => {
-                        let task = old_task_schedule.tasks.get_mut(&idx).unwrap();
-                        task.pomodoro = Some((task.pomodoro.unwrap().0, done));
+                        if let Some(task) = old_task_schedule.tasks.get_mut(&idx) {
+                            task.pomodoro = Some((task.pomodoro.unwrap().0, done)); // ?
+                        } else {
+                            return Err(format!("error: invalid index"))
+                        }
                     }
                     PomodoroUpdate::Remove => {
-                        old_task_schedule.tasks.get_mut(&idx).unwrap().pomodoro = None;
+                        if let Some(task) = old_task_schedule.tasks.get_mut(&idx) {
+                            task.pomodoro = None;
+                        } else {
+                            return Err(format!("error: invalid index"))
+                        }
                     }
                 },
                 UpdateSubCmd::Done => {
-                    old_task_schedule.tasks.get_mut(&idx).unwrap().finished = true;
+                    if let Some(task) = old_task_schedule.tasks.get_mut(&idx) {
+                        task.finished = true;
+                    } else {
+                        return Err(format!("error: invalid index"))
+                    }
                 }
                 UpdateSubCmd::NotDone => {
-                    old_task_schedule.tasks.get_mut(&idx).unwrap().finished = false;
+                    if let Some(task) = old_task_schedule.tasks.get_mut(&idx) {
+                        task.finished = false;
+                    } else {
+                        return Err(format!("error: invalid index"))
+                    }
                 }
             }
         }
+    }
+    Ok(())
+}
+fn main() {
+    if let Err(err) = run() {
+        eprintln!("{}" , err);
     }
 }
