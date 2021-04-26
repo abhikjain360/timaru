@@ -6,6 +6,8 @@ jobs:
   xtask:
     runs-on: ubuntu-latest
     steps:
-      - name: rust-cargo
-        uses: actions-rs/cargo@v1.0.1
-        run: cargo xtask ci
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo xtask ci
