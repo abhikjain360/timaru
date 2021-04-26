@@ -60,18 +60,18 @@ impl PartialOrd for TaskTime {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         let mut other_end_time = None;
 
-        let other_time = match &other {
-            &TaskTime::Precise { time } => time.time(),
-            &TaskTime::General { time } => {
+        let other_time = match other {
+            TaskTime::Precise { time } => time.time(),
+            TaskTime::General { time } => {
                 let res = time.to_time()?;
                 other_end_time = res.1;
                 res.0
             }
-            &TaskTime::Period { start, end } => {
+            TaskTime::Period { start, end } => {
                 other_end_time = Some(end.time());
                 start.time()
             }
-            &TaskTime::GeneralPeriod { start, end } => {
+            TaskTime::GeneralPeriod { start, end } => {
                 other_end_time = Some(match end.to_time()? {
                     (start, None) => start,
                     (_, Some(end)) => end,
@@ -80,8 +80,8 @@ impl PartialOrd for TaskTime {
             }
         };
 
-        match &self {
-            &TaskTime::Precise { time } => {
+        match self {
+            TaskTime::Precise { time } => {
                 let self_time = time.time();
                 match other_end_time {
                     Some(other_end_time) => {
@@ -96,7 +96,7 @@ impl PartialOrd for TaskTime {
                     None => self_time.partial_cmp(&other_time),
                 }
             }
-            &TaskTime::General { time } => match other_end_time {
+            TaskTime::General { time } => match other_end_time {
                 Some(other_end_time) => match time.to_time()? {
                     (self_time, None) => {
                         if self_time < other_time {
@@ -112,7 +112,7 @@ impl PartialOrd for TaskTime {
                 },
                 None => Some(time.to_time()?.0.cmp(&other_time)),
             },
-            &TaskTime::Period { start, end } => match other_end_time {
+            TaskTime::Period { start, end } => match other_end_time {
                 // FIXME: maybe there is a more logical way to compare 2 ranges
                 Some(_) => Some(start.time().cmp(&other_time)),
                 None => {
@@ -125,7 +125,7 @@ impl PartialOrd for TaskTime {
                     }
                 }
             },
-            &TaskTime::GeneralPeriod { start, end } => match other_end_time {
+            TaskTime::GeneralPeriod { start, end } => match other_end_time {
                 Some(_) => Some(start.to_time()?.0.cmp(&other_time)),
                 None => {
                     if other_time < start.to_time()?.0 {
@@ -144,22 +144,24 @@ impl PartialOrd for TaskTime {
 impl TimeOfDay {
     pub fn to_time(&self) -> Option<(NaiveTime, Option<NaiveTime>)> {
         match self {
-            &TimeOfDay::Morning => Some((
+            TimeOfDay::Morning => Some((
                 NaiveTime::from_hms(6, 0, 0),
                 Some(NaiveTime::from_hms(11, 59, 59)),
             )),
-            &TimeOfDay::Noon => Some((NaiveTime::from_hms(12, 0, 0), None)),
-            &TimeOfDay::AfterNoon => {
-                Some((NaiveTime::from_hms(12, 0, 1), Some(NaiveTime::from_hms(17, 0, 0))))
-            }
-            &TimeOfDay::Evening => {
-                Some((NaiveTime::from_hms(17, 0, 1), Some(NaiveTime::from_hms(20, 0, 0))))
-            }
-            &TimeOfDay::Night => Some((
+            TimeOfDay::Noon => Some((NaiveTime::from_hms(12, 0, 0), None)),
+            TimeOfDay::AfterNoon => Some((
+                NaiveTime::from_hms(12, 0, 1),
+                Some(NaiveTime::from_hms(17, 0, 0)),
+            )),
+            TimeOfDay::Evening => Some((
+                NaiveTime::from_hms(17, 0, 1),
+                Some(NaiveTime::from_hms(20, 0, 0)),
+            )),
+            TimeOfDay::Night => Some((
                 NaiveTime::from_hms(20, 0, 1),
                 Some(NaiveTime::from_hms(23, 59, 59)),
             )),
-            &TimeOfDay::MidNight => Some((NaiveTime::from_hms(0, 0, 0), None)),
+            TimeOfDay::MidNight => Some((NaiveTime::from_hms(0, 0, 0), None)),
             _ => None,
         }
     }

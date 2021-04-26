@@ -66,7 +66,7 @@ pub enum UpdateSubCmd {
     /// Mark task as completed
     Done,
     /// Mark task as incomplete
-    NotDone
+    NotDone,
 }
 
 #[derive(Clap, Debug, Clone)]

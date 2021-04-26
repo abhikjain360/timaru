@@ -1,15 +1,12 @@
-use xshell::{cwd, cmd, pushd};
+use xshell::cmd;
 
 mod flags;
-use flags::{XtaskCmd, Xtask};
+use flags::{Xtask, XtaskCmd};
 
 fn ci() -> xshell::Result<()> {
-    {
-        let _p = pushd("timaru")?;
-        cmd!("cargo fmt").run()?;
-        cmd!("cargo clippy").run()?;
-        cmd!("cargo build").run()
-    }
+    cmd!("cargo fmt").run()?;
+    cmd!("cargo clippy").run()?;
+    cmd!("cargo build").run()
 }
 
 fn main() {
