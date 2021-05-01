@@ -14,7 +14,7 @@ use nom::{
 };
 
 use crate::{
-    change_err,
+    change_parse_err,
     error::TimaruError,
     schedule::Schedule,
     task::{Task, TaskTime, TimeOfDay},
@@ -43,6 +43,11 @@ pub fn get_ymd(input: &str) -> IResult<&str, (u32, u32, i32)> {
             println!("{:?}", e);
             e
         })
+}
+
+pub fn get_date(input: &str) -> Result<Date<Local>, TimaruError> {
+    let (d, m, y) = change_parse_err!(get_ymd(input).map(|(_, date)| date), "wrong date format");
+    Ok(Local.ymd(y, m, d))
 }
 
 fn clear_ws(input: &str) -> IResult<&str, &str> {
@@ -74,7 +79,7 @@ pub fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, Ti
 
 impl Schedule {
     pub fn from_str(file: PathBuf, input: &str) -> Result<Self, TimaruError> {
-        let (input, (_, _, _, day, month, year)) = change_err!(
+        let (input, (_, _, _, day, month, year)) = change_parse_err!(
             tuple((clear_ws, char('#'), space0, get_day, get_month, get_year))(input),
             "date format wrong"
         );
@@ -87,7 +92,7 @@ impl Schedule {
 
         let mut tasks = HashMap::with_capacity(5);
 
-        let (input, _) = change_err!(clear_ws(input), "whitespace before tasks");
+        let (input, _) = change_parse_err!(clear_ws(input), "whitespace before tasks");
 
         for (idx, line) in input.lines().enumerate() {
             tasks.insert((idx as u8) + 1, Task::from_str(line, &date)?);
@@ -99,7 +104,7 @@ impl Schedule {
 
 impl Task {
     pub fn from_str(input: &'_ str, date: &Date<Local>) -> Result<Self, TimaruError> {
-        let (mut input, _) = change_err!(
+        let (mut input, _) = change_parse_err!(
             tuple::<&str, _, nom::error::Error<&str>, _>((
                 space0,
                 alt((char('-'), char('*'))),
@@ -120,7 +125,7 @@ impl Task {
                 return Err(TimaruError::Parse("finished marking of task"));
             };
 
-        let (input, (_, _, time_str, _)) = change_err!(
+        let (input, (_, _, time_str, _)) = change_parse_err!(
             tuple::<&str, _, nom::error::Error<&str>, _>((
                 char(']'),
                 space1,
@@ -133,7 +138,7 @@ impl Task {
         let time = TaskTime::from_str(time_str.trim(), date)?;
 
         let (description, pomodoro) = if input.starts_with('(') {
-            let (input, (_, _, times, _, _, _, done, _, _, _, _, _)) = change_err!(
+            let (input, (_, _, times, _, _, _, done, _, _, _, _, _)) = change_parse_err!(
                 tuple::<&str, _, nom::error::Error<&str>, _>((
                     char('('),
                     space0,
@@ -156,7 +161,7 @@ impl Task {
             }
         } else {
             (
-                change_err!(
+                change_parse_err!(
                     tuple::<&str, _, nom::error::Error<&str>, _>((space0, tag("=>"), space0))(
                         input
                     ),
@@ -201,7 +206,7 @@ impl TaskTime {
                     })
                 }
             }
-            _ => Err(TimaruError::Parse("task time")),
+            _ => Err(TimaruError::Parse("invalid time format")),
         }
     }
 }
