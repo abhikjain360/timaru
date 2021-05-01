@@ -5,8 +5,8 @@ use std::{io, thread, time::Duration};
 use clap::Clap;
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent},
+    execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-    execute
 };
 use thiserror::Error;
 use tui::{

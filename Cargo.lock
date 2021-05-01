@@ -539,7 +539,6 @@ dependencies = [
  "clap",
  "crossterm 0.19.0",
  "nom",
- "termion",
  "thiserror",
  "tui",
 ]
