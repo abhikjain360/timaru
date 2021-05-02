@@ -4,7 +4,7 @@ use chrono::{Datelike, Duration, Local, TimeZone};
 use clap::Clap;
 
 use crate::{
-    error::TimaruError,
+    error::Error,
     parser::get_date,
     schedule::Schedule,
     task::{Task, TaskTime},
@@ -87,7 +87,7 @@ pub enum PomodoroUpdate {
 }
 
 impl SubCommand {
-    pub fn handle(self, db_dir: &Path) -> Result<(), TimaruError> {
+    pub fn parse(self, db_dir: &Path) -> Result<(), Error> {
         match self {
             SubCommand::Week => {
                 let mut day = Local::today();
@@ -138,7 +138,7 @@ impl SubCommand {
                 let date = get_date(&date)?;
 
                 if Schedule::open(&db_dir, &date)?.remove_task(idx).is_none() {
-                    return Err(TimaruError::Idx);
+                    return Err(Error::Idx);
                 }
             }
             #[allow(unused_variables)]
@@ -158,19 +158,19 @@ impl SubCommand {
                                 task.time.change_date(&date);
                                 Schedule::open(&db_dir, &date)?.add_task(task);
                             }
-                            None => return Err(TimaruError::Idx),
+                            None => return Err(Error::Idx),
                         }
                     }
                     UpdateSubCmd::Time { time } => match old_task_schedule.tasks.get_mut(&idx) {
                         Some(task) => {
                             task.time = TaskTime::from_str(&time, &old_task_schedule.date)?
                         }
-                        None => return Err(TimaruError::Idx),
+                        None => return Err(Error::Idx),
                     },
                     UpdateSubCmd::Description { desc } => {
                         match old_task_schedule.tasks.get_mut(&idx) {
                             Some(task) => task.description = desc,
-                            None => return Err(TimaruError::Idx),
+                            None => return Err(Error::Idx),
                         }
                     }
                     UpdateSubCmd::Pomodoro(pom_update) => match pom_update {
@@ -182,7 +182,7 @@ impl SubCommand {
                                         None => Some((total, 0)),
                                     };
                                 }
-                                None => return Err(TimaruError::Idx),
+                                None => return Err(Error::Idx),
                             }
                         }
                         PomodoroUpdate::Done { done } => {
@@ -190,21 +190,21 @@ impl SubCommand {
                                 Some(task) => {
                                     task.pomodoro = Some((task.pomodoro.unwrap().0, done))
                                 }
-                                None => return Err(TimaruError::Idx),
+                                None => return Err(Error::Idx),
                             }
                         }
                         PomodoroUpdate::Remove => match old_task_schedule.tasks.get_mut(&idx) {
                             Some(task) => task.pomodoro = None,
-                            None => return Err(TimaruError::Idx),
+                            None => return Err(Error::Idx),
                         },
                     },
                     UpdateSubCmd::Done => match old_task_schedule.tasks.get_mut(&idx) {
                         Some(task) => task.finished = true,
-                        None => return Err(TimaruError::Idx),
+                        None => return Err(Error::Idx),
                     },
                     UpdateSubCmd::NotDone => match old_task_schedule.tasks.get_mut(&idx) {
                         Some(task) => task.finished = false,
-                        None => return Err(TimaruError::Idx),
+                        None => return Err(Error::Idx),
                     },
                 }
             }

@@ -15,7 +15,7 @@ use nom::{
 
 use crate::{
     change_parse_err,
-    error::TimaruError,
+    error::Error,
     schedule::Schedule,
     task::{Task, TaskTime, TimeOfDay},
 };
@@ -45,7 +45,7 @@ pub fn get_ymd(input: &str) -> IResult<&str, (u32, u32, i32)> {
         })
 }
 
-pub fn get_date(input: &str) -> Result<Date<Local>, TimaruError> {
+pub fn get_date(input: &str) -> Result<Date<Local>, Error> {
     let (d, m, y) = change_parse_err!(get_ymd(input).map(|(_, date)| date), "wrong date format");
     Ok(Local.ymd(y, m, d))
 }
@@ -54,16 +54,16 @@ fn clear_ws(input: &str) -> IResult<&str, &str> {
     take_while(|c: char| is_space(c as u8) || is_newline(c as u8))(input)
 }
 
-pub fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, TimaruError> {
+pub fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, Error> {
     let s: Vec<&str> = input.split(':').collect();
     match s.len() {
         1 => match s[0].parse::<u32>() {
             Ok(hour) => Ok(date.and_hms(hour, 0, 0)),
-            _ => Err(TimaruError::Parse("time")),
+            _ => Err(Error::Parse("time")),
         },
         2 => match (s[0].parse::<u32>(), s[1].parse::<u32>()) {
             (Ok(hour), Ok(min)) => Ok(date.and_hms(hour, min, 0)),
-            _ => Err(TimaruError::Parse("time")),
+            _ => Err(Error::Parse("time")),
         },
         3 => match (
             s[0].parse::<u32>(),
@@ -71,21 +71,21 @@ pub fn parse_time(input: &str, date: &Date<Local>) -> Result<DateTime<Local>, Ti
             s[2].parse::<u32>(),
         ) {
             (Ok(hour), Ok(min), Ok(sec)) => Ok(date.and_hms(hour, min, sec)),
-            _ => Err(TimaruError::Parse("time")),
+            _ => Err(Error::Parse("time")),
         },
-        _ => Err(TimaruError::Parse("time")),
+        _ => Err(Error::Parse("time")),
     }
 }
 
 impl Schedule {
-    pub fn from_str(file: PathBuf, input: &str) -> Result<Self, TimaruError> {
+    pub fn from_str(file: PathBuf, input: &str) -> Result<Self, Error> {
         let (input, (_, _, _, day, month, year)) = change_parse_err!(
             tuple((clear_ws, char('#'), space0, get_day, get_month, get_year))(input),
             "date format wrong"
         );
 
         let date = match Local.ymd_opt(year, month, day) {
-            LocalResult::None => return Err(TimaruError::Parse("date can not exist")),
+            LocalResult::None => return Err(Error::Parse("date can not exist")),
             LocalResult::Single(date) => date,
             LocalResult::Ambiguous(date, _) => date,
         };
@@ -103,7 +103,7 @@ impl Schedule {
 }
 
 impl Task {
-    pub fn from_str(input: &'_ str, date: &Date<Local>) -> Result<Self, TimaruError> {
+    pub fn from_str(input: &'_ str, date: &Date<Local>) -> Result<Self, Error> {
         let (mut input, _) = change_parse_err!(
             tuple::<&str, _, nom::error::Error<&str>, _>((
                 space0,
@@ -122,7 +122,7 @@ impl Task {
                 input = input_left;
                 false
             } else {
-                return Err(TimaruError::Parse("finished marking of task"));
+                return Err(Error::Parse("finished marking of task"));
             };
 
         let (input, (_, _, time_str, _)) = change_parse_err!(
@@ -157,7 +157,7 @@ impl Task {
             );
             match (times.parse::<u8>(), done.parse::<u8>()) {
                 (Ok(times), Ok(done)) => (input, Some((times, done))),
-                _ => return Err(TimaruError::Parse("pomodoro and/or description")),
+                _ => return Err(Error::Parse("pomodoro and/or description")),
             }
         } else {
             (
@@ -182,7 +182,7 @@ impl Task {
 }
 
 impl TaskTime {
-    pub fn from_str(input: &str, date: &Date<Local>) -> Result<TaskTime, TimaruError> {
+    pub fn from_str(input: &str, date: &Date<Local>) -> Result<TaskTime, Error> {
         let s: Vec<&str> = input.split('-').map(|s| s.trim()).collect();
 
         match s.len() {
@@ -206,7 +206,7 @@ impl TaskTime {
                     })
                 }
             }
-            _ => Err(TimaruError::Parse("invalid time format")),
+            _ => Err(Error::Parse("invalid time format")),
         }
     }
 }

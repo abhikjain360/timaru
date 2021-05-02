@@ -8,7 +8,7 @@ use std::{
 
 use chrono::{Date, Datelike, Local};
 
-use crate::{error::TimaruError, setup::check_dir, task::Task};
+use crate::{error::Error, setup::check_dir, task::Task};
 
 #[derive(Clone)]
 pub struct Schedule {
@@ -35,7 +35,7 @@ impl Debug for Schedule {
 }
 
 impl Schedule {
-    pub fn open(db_dir: &Path, date: &Date<Local>) -> Result<Schedule, TimaruError> {
+    pub fn open(db_dir: &Path, date: &Date<Local>) -> Result<Schedule, Error> {
         let schedule_path = check_dir(
             check_dir(db_dir.join(&format!("{}", date.year())))?.join(&format!("{}", date.month())),
         )?
@@ -49,14 +49,14 @@ impl Schedule {
                 .open(&schedule_path)
             {
                 Ok(file) => file,
-                Err(_) => return Err(TimaruError::File(schedule_path)),
+                Err(_) => return Err(Error::File(schedule_path)),
             },
         );
 
         let mut schedule_content = String::new();
         schedule_file
             .read_to_string(&mut schedule_content)
-            .map_err(|_| TimaruError::File(schedule_path.clone()))?;
+            .map_err(|_| Error::File(schedule_path.clone()))?;
 
         let schedule_content = schedule_content.trim();
 
@@ -71,7 +71,7 @@ impl Schedule {
         }
     }
 
-    pub fn flush(&self) -> Result<(), TimaruError> {
+    pub fn flush(&self) -> Result<(), Error> {
         let mut schedule_file = BufWriter::new(
             match OpenOptions::new()
                 .create(true)
@@ -80,13 +80,13 @@ impl Schedule {
                 .open(&self.file)
             {
                 Ok(file) => file,
-                Err(_) => return Err(TimaruError::File(self.file.clone())),
+                Err(_) => return Err(Error::File(self.file.clone())),
             },
         );
 
         match schedule_file.write_all(self.as_string().as_bytes()) {
             Ok(_) => Ok(()),
-            Err(_) => Err(TimaruError::File(self.file.clone())),
+            Err(_) => Err(Error::File(self.file.clone())),
         }
     }
 
