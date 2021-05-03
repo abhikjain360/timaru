@@ -13,4 +13,5 @@ log4rs = "1.0.0"
 nom = "6.1.2"
 chrono = "0.4.19"
 thiserror = "1.0.24"
+tokio = { version = "1.5", features = ["full"] }
 tui = { version = "0.14", features = ["crossterm"] }

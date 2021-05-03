@@ -12,7 +12,6 @@ use log::info;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
     widgets::{Block, Borders, Row, Table},
     Terminal,
 };
@@ -77,11 +76,13 @@ impl TimaruTui {
         })
     }
 
+    // TODO: move this inside `__impl_change_mode` macro and take input about keybindings in the
+    // macro.
     pub fn run(mut self) -> Result<(), Error> {
         self.empty_mode()?;
 
         'outer: loop {
-            if event::poll(Duration::from_millis(50))? {
+            if event::poll(Duration::from_millis(100))? {
                 match event::read()? {
                     gen_key!(key 'q') => break 'outer,
                     gen_key!(key 'd') => self.day_mode()?,
@@ -102,39 +103,32 @@ impl TimaruTui {
     fn testing_stuff(&mut self) -> Result<(), Error> {
         self.terminal
             .draw(|f| {
-                let table_layout = Layout::default()
+                let splits = Layout::default()
+                    .direction(Direction::Vertical)
+                    .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
+                    .split(f.size());
+                let mut days_splits = Layout::default()
                     .direction(Direction::Horizontal)
                     .constraints([
-                        Constraint::Min(0),
-                        Constraint::Length(25),
-                        Constraint::Min(0),
+                        Constraint::Ratio(1, 3),
+                        Constraint::Ratio(1, 3),
+                        Constraint::Ratio(1, 3),
                     ])
-                    .split(f.size());
-                info!("cut 1 - {:?}", table_layout[1]);
-                let table_layout = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([
-                        Constraint::Min(0),
-                        Constraint::Length(30),
-                        Constraint::Min(0),
-                    ])
-                    .split(table_layout[1]);
-                info!("cut 2 - {:?}", table_layout[1]);
-                let table = Table::new(vec![
-                    Row::new(vec!["h", "Empty Mode"]),
-                    Row::new(vec!["q", "Quit"]),
-                    Row::new(vec!["d", "Day Mode"]),
-                    Row::new(vec!["w", "Week Mode"]),
-                    Row::new(vec!["m", "Month Mode"]),
-                ])
-                .style(Style::default().fg(Color::White))
-                .header(
-                    Row::new(vec!["Key", "Binding"])
-                        .style(Style::default().fg(Color::Yellow))
-                        .bottom_margin(1),
-                )
-                .widths(&[Constraint::Ratio(1, 3), Constraint::Ratio(2, 3)]);
-                f.render_widget(table, table_layout[1]);
+                    .split(splits[0]);
+                days_splits.extend(
+                    Layout::default()
+                        .direction(Direction::Horizontal)
+                        .constraints([
+                            Constraint::Ratio(1, 4),
+                            Constraint::Ratio(1, 4),
+                            Constraint::Ratio(1, 4),
+                            Constraint::Ratio(1, 4),
+                        ])
+                        .split(splits[1]),
+                );
+                for day_split in days_splits {
+                    f.render_widget(Block::default().borders(Borders::all()), day_split);
+                }
             })
             .map_err(|e| e.into())
     }
@@ -143,7 +137,32 @@ impl TimaruTui {
 __impl_change_mode! {
     TuiMode::Day => day_mode => |tui: &mut TimaruTui| {
         tui.terminal.draw(|f| {
-            f.render_widget(Block::default().borders(Borders::all()), f.size());
+            let splits = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
+                .split(f.size());
+            let mut days_splits = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints([
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                ])
+                .split(splits[0]);
+            days_splits.extend(
+                Layout::default()
+                    .direction(Direction::Horizontal)
+                    .constraints([
+                        Constraint::Ratio(1, 4),
+                        Constraint::Ratio(1, 4),
+                        Constraint::Ratio(1, 4),
+                        Constraint::Ratio(1, 4),
+                    ])
+                    .split(splits[1]),
+            );
+            for day_split in days_splits {
+                f.render_widget(Block::default().borders(Borders::all()), day_split);
+            }
         })
     }
 
@@ -162,18 +181,18 @@ __impl_change_mode! {
             let table_layout = Layout::default()
                 .direction(Direction::Horizontal)
                 .constraints([
-                    Constraint::Min(0),
+                    Constraint::Ratio(1, 10),
                     Constraint::Min(25),
-                    Constraint::Min(0),
+                    Constraint::Ratio(1, 10),
                 ])
                 .split(f.size());
             info!("cut 1 - {:?}", table_layout[1]);
             let table_layout = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
-                    Constraint::Min(0),
+                    Constraint::Ratio(1, 15),
                     Constraint::Min(30),
-                    Constraint::Min(0),
+                    Constraint::Ratio(1, 10),
                 ])
                 .split(table_layout[1]);
             info!("cut 2 - {:?}", table_layout[1]);
@@ -185,7 +204,8 @@ __impl_change_mode! {
                 Row::new(vec!["m", "Month Mode"]),
             ])
             .header(Row::new(vec!["Key", "Binding"]).bottom_margin(1))
-            .widths(&[Constraint::Ratio(1, 3), Constraint::Ratio(2, 3)]);
+            .widths(&[Constraint::Ratio(1, 3), Constraint::Ratio(2, 3)])
+            .block(Block::default().borders(Borders::ALL));
             f.render_widget(table, table_layout[1]);
         })
     }
@@ -196,63 +216,11 @@ __impl_change_mode! {
     }
 }
 
-/// We need to leave alternate screen and disable raw mode, and thus we implement a drop ourselves.
+// We need to leave alternate screen and disable raw mode, and thus we implement a drop ourselves.
 impl Drop for TimaruTui {
     fn drop(&mut self) {
         // These error don't matter anyway (I hope) as application about to exit.
         let _ = execute!(io::stdout(), LeaveAlternateScreen);
         let _ = disable_raw_mode();
-    }
-}
-
-pub fn launch_tui() -> Result<(), Error> {
-    enable_raw_mode()?;
-    execute!(io::stdout(), EnterAlternateScreen)?;
-    let stdout = io::stdout();
-    let mut terminal = Terminal::new(CrosstermBackend::new(stdout.lock()))?;
-
-    loop {
-        if event::poll(Duration::from_millis(100))? {
-            match event::read()? {
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('q'),
-                    ..
-                }) => {
-                    disable_raw_mode()?;
-                    execute!(io::stdout(), LeaveAlternateScreen)?;
-                    return Ok(());
-                }
-                Event::Key(KeyEvent {
-                    code: KeyCode::Char('r'),
-                    ..
-                }) => {
-                    terminal.draw(|f| {
-                        f.render_widget(Block::default().borders(Borders::all()), f.size());
-                    })?;
-                }
-                _ => {
-                    terminal.draw(|f| {
-                        let chunks = Layout::default()
-                            .direction(Direction::Vertical)
-                            .margin(1)
-                            .constraints(
-                                [
-                                    Constraint::Percentage(10),
-                                    Constraint::Percentage(80),
-                                    Constraint::Percentage(10),
-                                ]
-                                .as_ref(),
-                            )
-                            .split(f.size());
-                        let block = Block::default().title("Block 1").borders(Borders::ALL);
-                        f.render_widget(block, chunks[0]);
-                        let block = Block::default().title("Block 2").borders(Borders::ALL);
-                        f.render_widget(block, chunks[1]);
-                        let block = Block::default().title("Block 3").borders(Borders::ALL);
-                        f.render_widget(block, chunks[2]);
-                    })?;
-                }
-            }
-        }
     }
 }

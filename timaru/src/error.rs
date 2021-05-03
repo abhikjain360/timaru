@@ -17,7 +17,7 @@ pub enum Error {
     #[error("error: TUI error : {0:?}")]
     TUI(#[from] crossterm::ErrorKind),
     #[error("error: Log error: {0:?}")]
-    Log(#[from] log::SetLoggerError)
+    Log(#[from] log::SetLoggerError),
 }
 
 #[macro_export]

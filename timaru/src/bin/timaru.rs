@@ -2,13 +2,13 @@ use clap::Clap;
 
 use timaru::{cli::Opts, error::Error, log::set_log, setup::check_setup, tui::TimaruTui};
 
-fn run() -> Result<(), Error> {
+async fn run() -> Result<(), Error> {
     set_log()?;
-    let (_cfg_dir, db_dir) = check_setup()?;
+    let (_cfg_dir, db_dir) = check_setup().await?;
 
     let opts = Opts::parse();
     match opts.subcmd {
-        Some(subcmd) => subcmd.parse(&db_dir)?,
+        Some(subcmd) => subcmd.parse(&db_dir).await?,
         None => {
             TimaruTui::new()?.run()?;
         }
@@ -17,6 +17,7 @@ fn run() -> Result<(), Error> {
     Ok(())
 }
 
-fn main() {
-    run().unwrap();
+#[tokio::main]
+async fn main() {
+    run().await.unwrap();
 }

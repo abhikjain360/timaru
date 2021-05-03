@@ -1,4 +1,4 @@
-use log::{LevelFilter, SetLoggerError};
+use log::LevelFilter;
 use log4rs::{
     append::file::FileAppender,
     config::{Appender, Config, Root},

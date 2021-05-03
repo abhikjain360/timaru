@@ -87,30 +87,34 @@ pub enum PomodoroUpdate {
 }
 
 impl SubCommand {
-    pub fn parse(self, db_dir: &Path) -> Result<(), Error> {
+    pub async fn parse(self, db_dir: &Path) -> Result<(), Error> {
         match self {
             SubCommand::Week => {
-                let mut day = Local::today();
-                for _ in 0..7 {
-                    println!("{}", Schedule::open(&db_dir, &day)?.as_string());
-                    day = day + Duration::days(1);
-                }
+                let today = Local::today();
+                Schedule::open_range(db_dir, today, today + Duration::days(7))
+                    .await?
+                    .iter()
+                    .for_each(|schedule| println!("{:?}", schedule));
             }
             SubCommand::Month => {
-                let mut day = Local::today();
-                let next_month = if day.month() < 12 { day.month() + 1 } else { 1 };
-                let next_month_day = Local.ymd(day.year(), next_month, day.day());
-                while day <= next_month_day {
-                    println!("{:?}", Schedule::open(&db_dir, &day)?.as_string());
-                    day = day + Duration::days(1);
-                }
+                let today = Local::today();
+                let next_month = if today.month() < 12 {
+                    today.month() + 1
+                } else {
+                    1
+                };
+                let next_month_day = Local.ymd(today.year(), next_month, today.day());
+                Schedule::open_range(db_dir, today, next_month_day)
+                    .await?
+                    .iter()
+                    .for_each(|schedule| println!("{:?}", schedule));
             }
             SubCommand::List { date } => {
                 let date = match date {
                     Some(date_string) => get_date(&date_string)?,
                     None => Local::today(),
                 };
-                println!("{:?}", Schedule::open(&db_dir, &date)?.as_string());
+                println!("{:?}", Schedule::open(&db_dir, date).await?.as_string());
             }
             SubCommand::Add {
                 date,
@@ -132,23 +136,26 @@ impl SubCommand {
                     pomodoro: pomodoro.map(|total| (total, 0)),
                     finished: false,
                 };
-                Schedule::open(&db_dir, &date)?.add_task(task);
+                Schedule::open(&db_dir, date).await?.add_task(task);
             }
             SubCommand::Remove { date, idx } => {
                 let date = get_date(&date)?;
 
-                if Schedule::open(&db_dir, &date)?.remove_task(idx).is_none() {
+                if Schedule::open(&db_dir, date)
+                    .await?
+                    .remove_task(idx)
+                    .is_none()
+                {
                     return Err(Error::Idx);
                 }
             }
-            #[allow(unused_variables)]
             SubCommand::Update {
                 old_date,
                 idx,
                 subcmd,
             } => {
                 let old_date = get_date(&old_date)?;
-                let mut old_task_schedule = Schedule::open(&db_dir, &old_date)?;
+                let mut old_task_schedule = Schedule::open(&db_dir, old_date).await?;
 
                 match subcmd {
                     UpdateSubCmd::Date { date } => {
@@ -156,7 +163,7 @@ impl SubCommand {
                         match old_task_schedule.remove_task(idx) {
                             Some(mut task) => {
                                 task.time.change_date(&date);
-                                Schedule::open(&db_dir, &date)?.add_task(task);
+                                Schedule::open(&db_dir, date).await?.add_task(task);
                             }
                             None => return Err(Error::Idx),
                         }
