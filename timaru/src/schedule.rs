@@ -124,11 +124,13 @@ impl Schedule {
         Ok(())
     }
 
+    #[inline]
     pub fn add_task(&mut self, task: Task) {
         let idx = self.tasks.len() as u8 + 1;
         self.tasks.insert(idx, task);
     }
 
+    #[inline]
     pub fn remove_task(&mut self, idx: u8) -> Option<Task> {
         self.tasks.remove(&idx)
     }

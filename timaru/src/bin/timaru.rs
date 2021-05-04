@@ -10,7 +10,7 @@ async fn run() -> Result<(), Error> {
     match opts.subcmd {
         Some(subcmd) => subcmd.parse(&db_dir).await?,
         None => {
-            TimaruTui::new()?.run()?;
+            TimaruTui::new(db_dir)?.run().await?;
         }
     }
 

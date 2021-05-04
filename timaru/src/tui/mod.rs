@@ -1,14 +1,15 @@
 use std::{
     io::{self, StdoutLock},
-    time::Duration,
+    path::PathBuf,
+    time,
 };
 
+use chrono::{Duration, Local};
 use crossterm::{
     event::{self, Event, KeyCode, KeyEvent},
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use log::info;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -16,7 +17,10 @@ use tui::{
     Terminal,
 };
 
-use crate::error::Error;
+use crate::{error::Error, schedule::Schedule};
+
+mod format;
+pub use format::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum TuiMode {
@@ -32,21 +36,42 @@ pub type TermType = Terminal<CrosstermBackend<io::StdoutLock<'static>>>;
 pub struct TimaruTui {
     terminal: TermType,
     mode: TuiMode,
+    db_dir: PathBuf,
 }
 
 macro_rules! __impl_change_mode {
-    ($($var:path => $f_name:tt => $f_body:expr)+) => {
+    ($($key:tt $val:literal = $var:path => $f_name:tt |$self:ident| $f_body:block)+) => {
         impl TimaruTui {
-            pub fn change_mode(&mut self, mode: TuiMode) -> Result<(), Error> {
+            pub async fn change_mode(&mut self, mode: TuiMode) -> Result<(), Error> {
                 match mode {
-                    $($var => self.$f_name(),)+
+                    $($var => self.$f_name().await,)+
+                    _ => Ok(())
                 }
             }
 
-            $(fn $f_name(&mut self) -> Result<(), Error> {
+            $(async fn $f_name(&mut self) -> Result<(), Error> {
                 self.mode = $var;
-                $f_body(self).map_err(|e| e.into())
+                let $self = self;
+                $f_body
             })+
+
+            pub async fn run(mut self) -> Result<(), Error> {
+                self.empty_mode().await?;
+
+                'outer: loop {
+                    if event::poll(time::Duration::from_millis(100))? {
+                        match event::read()? {
+                            $(gen_key!($key $val) => self.$f_name().await?,)+
+                            gen_key!(key 'q') => break 'outer,
+                            _ => {}
+                        }
+                    } else {
+                        self.change_mode(self.mode).await?;
+                    }
+                }
+
+                Ok(())
+            }
 
         }
     }
@@ -62,7 +87,7 @@ macro_rules! gen_key {
 }
 
 impl TimaruTui {
-    pub fn new() -> Result<Self, Error> {
+    pub fn new(db_dir: PathBuf) -> Result<Self, Error> {
         enable_raw_mode()?;
         execute!(io::stdout(), EnterAlternateScreen)?;
         let stdout = io::stdout();
@@ -73,69 +98,68 @@ impl TimaruTui {
                 std::mem::transmute::<_, StdoutLock<'static>>(stdout.lock())
             }))?,
             mode: TuiMode::Empty,
+            db_dir,
         })
     }
 
-    // TODO: move this inside `__impl_change_mode` macro and take input about keybindings in the
-    // macro.
-    pub fn run(mut self) -> Result<(), Error> {
-        self.empty_mode()?;
-
-        'outer: loop {
-            if event::poll(Duration::from_millis(100))? {
-                match event::read()? {
-                    gen_key!(key 'q') => break 'outer,
-                    gen_key!(key 'd') => self.day_mode()?,
-                    gen_key!(key 'w') => self.week_mode()?,
-                    gen_key!(key 'm') => self.month_mode()?,
-                    gen_key!(key 'h') => self.empty_mode()?,
-                    _ => {}
-                }
-            } else {
-                self.change_mode(self.mode)?;
-            }
-        }
-
-        Ok(())
-    }
-
     #[allow(dead_code)]
-    fn testing_stuff(&mut self) -> Result<(), Error> {
-        self.terminal
-            .draw(|f| {
-                let splits = Layout::default()
-                    .direction(Direction::Vertical)
-                    .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
-                    .split(f.size());
-                let mut days_splits = Layout::default()
+    async fn testing_stuff(&mut self) -> Result<(), Error> {
+        let schedules = Schedule::open_range(
+            &self.db_dir,
+            Local::today(),
+            Local::today() + Duration::days(7),
+        )
+        .await?
+        .into_iter();
+        self.terminal.draw(|f| {
+            let splits = Layout::default()
+                .direction(Direction::Vertical)
+                .margin(1)
+                .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
+                .split(f.size());
+            let mut days_splits = Layout::default()
+                .direction(Direction::Horizontal)
+                .margin(1)
+                .constraints([
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                    Constraint::Ratio(1, 3),
+                ])
+                .split(splits[0]);
+            days_splits.extend(
+                Layout::default()
                     .direction(Direction::Horizontal)
+                    .margin(1)
                     .constraints([
-                        Constraint::Ratio(1, 3),
-                        Constraint::Ratio(1, 3),
-                        Constraint::Ratio(1, 3),
+                        Constraint::Ratio(1, 4),
+                        Constraint::Ratio(1, 4),
+                        Constraint::Ratio(1, 4),
+                        Constraint::Ratio(1, 4),
                     ])
-                    .split(splits[0]);
-                days_splits.extend(
-                    Layout::default()
-                        .direction(Direction::Horizontal)
-                        .constraints([
-                            Constraint::Ratio(1, 4),
-                            Constraint::Ratio(1, 4),
-                            Constraint::Ratio(1, 4),
-                            Constraint::Ratio(1, 4),
-                        ])
-                        .split(splits[1]),
+                    .split(splits[1]),
+            );
+            for (day_split, day_schedule) in days_splits.into_iter().zip(schedules) {
+                f.render_widget(
+                    day_schedule
+                        .as_widget_paragraph()
+                        .block(Block::default().borders(Borders::ALL)),
+                    day_split,
                 );
-                for day_split in days_splits {
-                    f.render_widget(Block::default().borders(Borders::all()), day_split);
-                }
-            })
-            .map_err(|e| e.into())
+            }
+        })?;
+        Ok(())
     }
 }
 
 __impl_change_mode! {
-    TuiMode::Day => day_mode => |tui: &mut TimaruTui| {
+    key 'd' = TuiMode::Day => day_mode |tui| {
+        let schedules = Schedule::open_range(
+            &tui.db_dir,
+            Local::today(),
+            Local::today() + Duration::days(7),
+        )
+        .await?
+        .into_iter();
         tui.terminal.draw(|f| {
             let splits = Layout::default()
                 .direction(Direction::Vertical)
@@ -160,23 +184,19 @@ __impl_change_mode! {
                     ])
                     .split(splits[1]),
             );
-            for day_split in days_splits {
-                f.render_widget(Block::default().borders(Borders::all()), day_split);
+            for (day_split, day_schedule) in days_splits.into_iter().zip(schedules) {
+                let para = day_schedule
+                    .as_widget_paragraph()
+                    .block(Block::default().borders(Borders::ALL));
+                f.render_widget(
+                    para,
+                    day_split,
+                );
             }
-        })
+        })?;
+        Ok(())
     }
-
-    TuiMode::Month => month_mode => |tui: &mut TimaruTui| {
-        tui.terminal.draw(|f| {
-            f.render_widget(Block::default().borders(Borders::all()), f.size());
-        })
-    }
-    TuiMode::Week => week_mode => |tui: &mut TimaruTui| {
-        tui.terminal.draw(|f| {
-            f.render_widget(Block::default().borders(Borders::all()), f.size());
-        })
-    }
-    TuiMode::Empty => empty_mode => |tui: &mut TimaruTui| {
+    key 'h' = TuiMode::Empty => empty_mode |tui| {
         tui.terminal.draw(|f| {
             let table_layout = Layout::default()
                 .direction(Direction::Horizontal)
@@ -186,7 +206,6 @@ __impl_change_mode! {
                     Constraint::Ratio(1, 10),
                 ])
                 .split(f.size());
-            info!("cut 1 - {:?}", table_layout[1]);
             let table_layout = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints([
@@ -195,7 +214,6 @@ __impl_change_mode! {
                     Constraint::Ratio(1, 10),
                 ])
                 .split(table_layout[1]);
-            info!("cut 2 - {:?}", table_layout[1]);
             let table = Table::new(vec![
                 Row::new(vec!["h", "Empty Mode"]),
                 Row::new(vec!["q", "Quit"]),
@@ -207,12 +225,8 @@ __impl_change_mode! {
             .widths(&[Constraint::Ratio(1, 3), Constraint::Ratio(2, 3)])
             .block(Block::default().borders(Borders::ALL));
             f.render_widget(table, table_layout[1]);
-        })
-    }
-    TuiMode::Edit => edit_mode => |tui: &mut TimaruTui| {
-        tui.terminal.draw(|f| {
-            f.render_widget(Block::default().borders(Borders::all()), f.size());
-        })
+        })?;
+        Ok(())
     }
 }
 

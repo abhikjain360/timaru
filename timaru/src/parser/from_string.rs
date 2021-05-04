@@ -20,22 +20,26 @@ use crate::{
     task::{Task, TaskTime, TimeOfDay},
 };
 
+#[inline]
 fn get_day(input: &str) -> IResult<&str, u32> {
     let (input, day) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
     let (left_str, _) = char('-')(input)?;
     Ok((left_str, day))
 }
 
+#[inline]
 fn get_month(input: &str) -> IResult<&str, u32> {
     let (input, month) = map_res(digit1, |s: &str| s.parse::<u32>())(input)?;
     let (left_str, _) = char('-')(input)?;
     Ok((left_str, month))
 }
 
+#[inline]
 fn get_year(input: &str) -> IResult<&str, i32> {
     map_res(digit1, |s: &str| s.parse::<i32>())(input)
 }
 
+#[inline]
 pub fn get_ymd(input: &str) -> IResult<&str, (u32, u32, i32)> {
     tuple((space0, get_day, get_month, get_year))(input)
         .map(|t| (t.0, (t.1 .1, t.1 .2, t.1 .3)))
@@ -45,11 +49,13 @@ pub fn get_ymd(input: &str) -> IResult<&str, (u32, u32, i32)> {
         })
 }
 
+#[inline]
 pub fn get_date(input: &str) -> Result<Date<Local>, Error> {
     let (d, m, y) = change_parse_err!(get_ymd(input).map(|(_, date)| date), "wrong date format");
     Ok(Local.ymd(y, m, d))
 }
 
+#[inline]
 fn clear_ws(input: &str) -> IResult<&str, &str> {
     take_while(|c: char| is_space(c as u8) || is_newline(c as u8))(input)
 }

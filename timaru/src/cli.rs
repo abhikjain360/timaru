@@ -114,7 +114,7 @@ impl SubCommand {
                     Some(date_string) => get_date(&date_string)?,
                     None => Local::today(),
                 };
-                println!("{:?}", Schedule::open(&db_dir, date).await?.as_string());
+                println!("{:?}", Schedule::open(&db_dir, date).await?);
             }
             SubCommand::Add {
                 date,
