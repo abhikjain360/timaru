@@ -1,7 +1,7 @@
 use chrono::Datelike;
 use tui::{
     text::{Span, Spans},
-    widgets::Paragraph,
+    widgets::{Paragraph, Wrap},
 };
 
 use crate::{schedule::Schedule, task::Task};
@@ -22,7 +22,7 @@ impl Schedule {
             text.push(Spans::from(task.as_tui_span()));
         }
 
-        Paragraph::new(text)
+        Paragraph::new(text).wrap(Wrap { trim: true })
     }
 }
 

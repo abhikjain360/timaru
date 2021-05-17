@@ -10,6 +10,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use tracing::info;
 use tui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
@@ -114,12 +115,12 @@ impl TimaruTui {
         self.terminal.draw(|f| {
             let splits = Layout::default()
                 .direction(Direction::Vertical)
-                .margin(1)
+                .margin(0)
                 .constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
                 .split(f.size());
             let mut days_splits = Layout::default()
                 .direction(Direction::Horizontal)
-                .margin(1)
+                .margin(0)
                 .constraints([
                     Constraint::Ratio(1, 3),
                     Constraint::Ratio(1, 3),
@@ -129,7 +130,7 @@ impl TimaruTui {
             days_splits.extend(
                 Layout::default()
                     .direction(Direction::Horizontal)
-                    .margin(1)
+                    .margin(0)
                     .constraints([
                         Constraint::Ratio(1, 4),
                         Constraint::Ratio(1, 4),
@@ -139,6 +140,7 @@ impl TimaruTui {
                     .split(splits[1]),
             );
             for (day_split, day_schedule) in days_splits.into_iter().zip(schedules) {
+                info!("{:?}", day_split);
                 f.render_widget(
                     day_schedule
                         .as_widget_paragraph()
